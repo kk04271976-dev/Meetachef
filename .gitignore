@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Playwright
+.playwright/
+
+# Debug screenshots
+*-debug.png
+screenshots/
+
+# Environment variables
+.env
+.env.local
+
+# Config with credentials (if you move credentials to separate file)
+config.local.js
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+

@@ -1,0 +1,22 @@
+{
+  "name": "meetachef-automation",
+  "version": "1.0.0",
+  "description": "Automation tool for meetachef.com to connect with chefs",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "install-browsers": "npx playwright install chromium"
+  },
+  "keywords": [
+    "automation",
+    "playwright",
+    "meetachef"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "playwright": "^1.40.0"
+  }
+}
+

@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussion
+    url: https://github.com/YOUR_USERNAME/Meetachef/discussions
+    about: Ask questions and discuss ideas
+  - name: 📖 Documentation
+    url: https://github.com/YOUR_USERNAME/Meetachef/wiki
+    about: Check the documentation
+
