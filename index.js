@@ -162,34 +162,59 @@ class MeetachefAutomation {
       await emailInput.fill(config.credentials.email);
       await this.randomDelay(500, 1000);
 
-      // Find password input field
+      // Find password input field - try multiple strategies
       const passwordSelectors = [
         'input[type="password"]',
         'input[name="password"]',
+        'input[name*="password" i]',
         'input[id*="password" i]',
         'input[placeholder*="password" i]',
         'input[aria-label*="password" i]',
+        'input[autocomplete="current-password"]',
+        'input[autocomplete="password"]',
         '#password',
         '.password-input',
+        'input[type="text"][name*="password" i]', // Some sites use text type
       ];
 
       let passwordInput = null;
+      
+      // First try to find visible password inputs
       for (const selector of passwordSelectors) {
         try {
-          const element = await this.page.$(selector);
-          if (element && await element.isVisible()) {
-            passwordInput = element;
-            console.log(`✅ Found password input with selector: ${selector}`);
-            break;
+          const elements = await this.page.$$(selector);
+          for (const element of elements) {
+            if (await element.isVisible()) {
+              passwordInput = element;
+              console.log(`✅ Found password input with selector: ${selector}`);
+              break;
+            }
           }
+          if (passwordInput) break;
         } catch (e) {
           // Continue to next selector
         }
       }
 
+      // If still not found, try to find any password input (even if not visible)
+      if (!passwordInput) {
+        for (const selector of passwordSelectors) {
+          try {
+            const element = await this.page.$(selector);
+            if (element) {
+              passwordInput = element;
+              console.log(`✅ Found password input (may be hidden) with selector: ${selector}`);
+              break;
+            }
+          } catch (e) {
+            // Continue to next selector
+          }
+        }
+      }
+
       if (!passwordInput) {
         console.log('❌ Could not find password input field');
-        await this.page.screenshot({ path: 'login-form-debug.png' });
+        await this.page.screenshot({ path: 'login-form-debug.png', fullPage: true });
         return false;
       }
 
@@ -321,14 +346,58 @@ class MeetachefAutomation {
   }
 
   /**
+   * Parse city and state from location string
+   */
+  parseLocation(location) {
+    // Format: "City, State" or "City, ST"
+    const parts = location.split(',').map(p => p.trim());
+    if (parts.length === 2) {
+      return {
+        city: parts[0],
+        state: parts[1]
+      };
+    }
+    return { city: location, state: '' };
+  }
+
+  /**
+   * Get full state name from abbreviation
+   */
+  getFullStateName(abbreviation) {
+    const stateMap = {
+      'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas',
+      'CA': 'California', 'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware',
+      'FL': 'Florida', 'GA': 'Georgia', 'HI': 'Hawaii', 'ID': 'Idaho',
+      'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa', 'KS': 'Kansas',
+      'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+      'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi',
+      'MO': 'Missouri', 'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada',
+      'NH': 'New Hampshire', 'NJ': 'New Jersey', 'NM': 'New Mexico', 'NY': 'New York',
+      'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio', 'OK': 'Oklahoma',
+      'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+      'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah',
+      'VT': 'Vermont', 'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia',
+      'WI': 'Wisconsin', 'WY': 'Wyoming', 'DC': 'District of Columbia'
+    };
+    
+    const upperAbbr = abbreviation.toUpperCase();
+    return stateMap[upperAbbr] || abbreviation;
+  }
+
+  /**
    * Update location to major US cities
    */
-  async updateLocation(city) {
-    console.log(`📍 Updating location to ${city}...`);
+  async updateLocation(location) {
+    console.log(`📍 Updating location to ${location}...`);
     
     try {
+      const { city, state: stateAbbr } = this.parseLocation(location);
+      const fullStateName = this.getFullStateName(stateAbbr);
+      
+      console.log(`   City: ${city}`);
+      console.log(`   State: ${fullStateName}`);
+      
       // Look for location selector/button
-      // Common selectors for location features
       const locationSelectors = [
         'button[aria-label*="location"]',
         'button[aria-label*="Location"]',
@@ -345,7 +414,7 @@ class MeetachefAutomation {
       for (const selector of locationSelectors) {
         try {
           const element = await this.page.$(selector);
-          if (element) {
+          if (element && await element.isVisible()) {
             locationElement = element;
             console.log(`✅ Found location element with selector: ${selector}`);
             break;
@@ -356,56 +425,148 @@ class MeetachefAutomation {
       }
 
       if (locationElement) {
+        // Click to open location input
         await locationElement.click();
-        await this.randomDelay(1000, 2000);
-
-        // Try to input the city name
-        const inputSelectors = [
-          'input[type="text"]',
-          'input[placeholder*="city" i]',
-          'input[placeholder*="location" i]',
-          'input[aria-label*="location" i]',
-        ];
-
-        for (const selector of inputSelectors) {
-          try {
-            const input = await this.page.$(selector);
-            if (input) {
-              await input.fill(city);
-              await this.randomDelay(500, 1000);
-              
-              // Wait for suggestions and select first result
-              await this.randomDelay(1000, 2000);
-              await this.page.keyboard.press('Enter');
-              await this.randomDelay(1000, 2000);
-              
-              console.log(`✅ Location updated to ${city}`);
-              return true;
-            }
-          } catch (e) {
-            // Continue to next selector
-          }
-        }
-      } else {
-        console.log('⚠️  Location selector not found. The page structure may have changed.');
-        console.log('💡 Taking screenshot for debugging...');
-        await this.page.screenshot({ path: 'location-debug.png' });
+        await this.randomDelay(1500, 2500);
       }
 
-      return false;
+      // Step 1: Find and fill city input
+      console.log('   Step 1: Inputting city name...');
+      const cityInputSelectors = [
+        'input[placeholder*="city" i]',
+        'input[name*="city" i]',
+        'input[id*="city" i]',
+        'input[aria-label*="city" i]',
+        'input[type="text"]:first-of-type',
+      ];
+
+      let cityInput = null;
+      for (const selector of cityInputSelectors) {
+        try {
+          const elements = await this.page.$$(selector);
+          for (const element of elements) {
+            if (await element.isVisible()) {
+              cityInput = element;
+              console.log(`✅ Found city input with selector: ${selector}`);
+              break;
+            }
+          }
+          if (cityInput) break;
+        } catch (e) {
+          // Continue to next selector
+        }
+      }
+
+      if (cityInput) {
+        await cityInput.click();
+        await this.randomDelay(500, 1000);
+        await cityInput.fill(city);
+        await this.randomDelay(1000, 1500);
+        console.log(`✅ City "${city}" entered`);
+      } else {
+        console.log('⚠️  City input not found, trying alternative approach...');
+        // Try typing directly
+        await this.page.keyboard.type(city, { delay: 100 });
+        await this.randomDelay(1000, 1500);
+      }
+
+      // Step 2: Find and fill state input
+      console.log('   Step 2: Inputting state name...');
+      const stateInputSelectors = [
+        'input[placeholder*="state" i]',
+        'input[name*="state" i]',
+        'input[id*="state" i]',
+        'input[aria-label*="state" i]',
+        'select[name*="state" i]',
+        'select[id*="state" i]',
+      ];
+
+      let stateInput = null;
+      for (const selector of stateInputSelectors) {
+        try {
+          const elements = await this.page.$$(selector);
+          for (const element of elements) {
+            if (await element.isVisible()) {
+              stateInput = element;
+              console.log(`✅ Found state input with selector: ${selector}`);
+              break;
+            }
+          }
+          if (stateInput) break;
+        } catch (e) {
+          // Continue to next selector
+        }
+      }
+
+      if (stateInput) {
+        const tagName = await stateInput.evaluate(el => el.tagName.toLowerCase());
+        
+        if (tagName === 'select') {
+          // Handle dropdown/select
+          await stateInput.selectOption({ label: fullStateName });
+          await this.randomDelay(1000, 1500);
+          console.log(`✅ State "${fullStateName}" selected from dropdown`);
+        } else {
+          // Handle text input
+          await stateInput.click();
+          await this.randomDelay(500, 1000);
+          await stateInput.fill(fullStateName);
+          await this.randomDelay(1000, 1500);
+          console.log(`✅ State "${fullStateName}" entered`);
+        }
+      } else {
+        console.log('⚠️  State input not found, trying Tab + type...');
+        // Try Tab to move to next field and type
+        await this.page.keyboard.press('Tab');
+        await this.randomDelay(500, 1000);
+        await this.page.keyboard.type(fullStateName, { delay: 100 });
+        await this.randomDelay(1000, 1500);
+      }
+
+      // Wait for location to be applied
+      await this.randomDelay(2000, 3000);
+      
+      // Try to confirm/apply the location if there's a button
+      const applySelectors = [
+        'button:has-text("Apply")',
+        'button:has-text("Search")',
+        'button:has-text("Update")',
+        'button[type="submit"]',
+      ];
+
+      for (const selector of applySelectors) {
+        try {
+          const button = await this.page.$(selector);
+          if (button && await button.isVisible()) {
+            await button.click();
+            await this.randomDelay(2000, 3000);
+            console.log(`✅ Applied location`);
+            break;
+          }
+        } catch (e) {
+          // Continue
+        }
+      }
+      
+      console.log(`✅ Location updated to ${city}, ${fullStateName}`);
+      return true;
     } catch (error) {
-      console.error(`❌ Error updating location to ${city}:`, error.message);
+      console.error(`❌ Error updating location to ${location}:`, error.message);
+      await this.page.screenshot({ path: 'location-debug.png', fullPage: true });
       return false;
     }
   }
 
   /**
-   * Find and interact with chef profiles
+   * Find all chef profiles with pagination/scrolling support
    */
   async findChefs() {
     console.log('👨‍🍳 Looking for chef profiles...');
     
     try {
+      // Wait for initial content to load
+      await this.randomDelay(2000, 3000);
+
       // Common selectors for chef cards/profiles
       const chefSelectors = [
         '[data-testid*="chef"]',
@@ -415,20 +576,24 @@ class MeetachefAutomation {
         'article',
         '[role="article"]',
         '.match-card',
+        '[class*="chef"]',
+        '[class*="profile"]',
+        '[class*="card"]',
       ];
 
-      // Wait for content to load
-      await this.randomDelay(2000, 3000);
+      let allChefs = [];
+      let previousCount = 0;
+      let scrollAttempts = 0;
+      const maxScrollAttempts = 20; // Prevent infinite scrolling
+      let foundSelector = null;
 
-      // Try to find chef elements
-      let chefs = [];
-      
+      // First, identify which selector works
       for (const selector of chefSelectors) {
         try {
           const elements = await this.page.$$(selector);
           if (elements.length > 0) {
-            chefs = elements;
-            console.log(`✅ Found ${chefs.length} chef profiles with selector: ${selector}`);
+            foundSelector = selector;
+            console.log(`✅ Found selector: ${selector} with ${elements.length} initial chefs`);
             break;
           }
         } catch (e) {
@@ -436,12 +601,56 @@ class MeetachefAutomation {
         }
       }
 
-      if (chefs.length === 0) {
+      if (!foundSelector) {
         console.log('⚠️  No chef profiles found. Taking screenshot for debugging...');
-        await this.page.screenshot({ path: 'chefs-debug.png' });
+        await this.page.screenshot({ path: 'chefs-debug.png', fullPage: true });
+        return [];
       }
 
-      return chefs;
+      // Scroll and collect all chefs
+      while (scrollAttempts < maxScrollAttempts) {
+        // Get current chefs
+        const currentChefs = await this.page.$$(foundSelector);
+        allChefs = currentChefs;
+        
+        console.log(`📊 Found ${allChefs.length} chefs so far (scroll attempt ${scrollAttempts + 1})`);
+
+        // Scroll to load more content
+        await this.page.evaluate(() => {
+          window.scrollBy(0, window.innerHeight);
+        });
+        
+        await this.randomDelay(2000, 3000);
+
+        // Check if new content loaded
+        const newChefs = await this.page.$$(foundSelector);
+        
+        if (newChefs.length === allChefs.length && newChefs.length === previousCount) {
+          // No new chefs loaded, we've reached the end
+          console.log('✅ Reached end of list - no more chefs to load');
+          break;
+        }
+
+        previousCount = allChefs.length;
+        scrollAttempts++;
+      }
+
+      // Scroll back to top
+      await this.page.evaluate(() => {
+        window.scrollTo(0, 0);
+      });
+      await this.randomDelay(1000, 2000);
+
+      // Get final list of unique chefs
+      const finalChefs = await this.page.$$(foundSelector);
+      console.log(`✅ Total chefs found: ${finalChefs.length}`);
+
+      if (finalChefs.length === 0) {
+        console.log('⚠️  No chef profiles found. Taking screenshot for debugging...');
+        await this.page.screenshot({ path: 'chefs-debug.png', fullPage: true });
+      }
+
+      return finalChefs;
     } catch (error) {
       console.error('❌ Error finding chefs:', error.message);
       return [];
@@ -551,42 +760,90 @@ class MeetachefAutomation {
   }
 
   /**
-   * Process multiple chefs with rate limiting
+   * Process ALL chefs in current city with rate limiting
    */
-  async processChefs(maxChefs = config.maxChefsPerSession) {
-    console.log(`👨‍🍳 Processing up to ${maxChefs} chefs...`);
+  async processChefs() {
+    console.log(`👨‍🍳 Finding all chefs in current city...`);
 
     const chefs = await this.findChefs();
     
     if (chefs.length === 0) {
-      console.log('⚠️  No chefs found to process');
-      return;
+      console.log('⚠️  No chefs found to process in this city');
+      return { total: 0, success: 0 };
     }
 
-    const chefsToProcess = chefs.slice(0, maxChefs);
+    console.log(`\n📋 Processing ALL ${chefs.length} chefs in this city...`);
     let successCount = 0;
+    let skippedCount = 0;
 
-    for (let i = 0; i < chefsToProcess.length; i++) {
-      console.log(`\n📋 Processing chef ${i + 1}/${chefsToProcess.length}...`);
+    for (let i = 0; i < chefs.length; i++) {
+      console.log(`\n📋 Processing chef ${i + 1}/${chefs.length}...`);
       
       try {
-        const success = await this.sendMessage(chefsToProcess[i]);
+        // Re-find all chefs to get fresh list
+        const chefSelector = await this.findChefSelector();
+        if (!chefSelector) {
+          console.log('⚠️  Could not find chef selector, stopping...');
+          break;
+        }
+        
+        const currentChefs = await this.page.$$(chefSelector);
+        if (i >= currentChefs.length) {
+          console.log('⚠️  Chef index out of range, stopping...');
+          break;
+        }
+
+        const success = await this.sendMessage(currentChefs[i]);
         if (success) {
           successCount++;
+        } else {
+          skippedCount++;
         }
 
         // Rate limiting - respect site policies
-        if (i < chefsToProcess.length - 1) {
+        if (i < chefs.length - 1) {
           const delay = config.delayBetweenActions;
           console.log(`⏳ Waiting ${delay}ms before next action (rate limiting)...`);
           await this.randomDelay(delay, delay + 1000);
         }
       } catch (error) {
         console.error(`❌ Error processing chef ${i + 1}:`, error.message);
+        skippedCount++;
       }
     }
 
-    console.log(`\n✅ Completed: ${successCount}/${chefsToProcess.length} messages sent`);
+    console.log(`\n✅ City completed: ${successCount}/${chefs.length} messages sent (${skippedCount} skipped)`);
+    return { total: chefs.length, success: successCount, skipped: skippedCount };
+  }
+
+  /**
+   * Helper to find the working chef selector
+   */
+  async findChefSelector() {
+    const chefSelectors = [
+      '[data-testid*="chef"]',
+      '[data-testid*="profile"]',
+      '.chef-card',
+      '.profile-card',
+      'article',
+      '[role="article"]',
+      '.match-card',
+      '[class*="chef"]',
+      '[class*="profile"]',
+      '[class*="card"]',
+    ];
+
+    for (const selector of chefSelectors) {
+      try {
+        const elements = await this.page.$$(selector);
+        if (elements.length > 0) {
+          return selector;
+        }
+      } catch (e) {
+        // Continue
+      }
+    }
+    return null;
   }
 
   /**
@@ -615,16 +872,30 @@ class MeetachefAutomation {
 
       // Update location for each major US city
       for (const city of config.usCities) {
-        console.log(`\n🏙️  Processing location: ${city}`);
-        await this.updateLocation(city);
-        await this.randomDelay(2000, 3000);
+        console.log(`\n${'='.repeat(60)}`);
+        console.log(`🏙️  Processing location: ${city}`);
+        console.log(`${'='.repeat(60)}`);
         
-        // Process chefs for this location
-        await this.processChefs();
+        // Update location
+        const locationUpdated = await this.updateLocation(city);
+        if (locationUpdated) {
+          await this.randomDelay(3000, 4000); // Wait for location to apply
+        } else {
+          console.log('⚠️  Location update failed, but continuing...');
+          await this.randomDelay(2000, 3000);
+        }
+        
+        // Process ALL chefs for this location before moving to next city
+        const result = await this.processChefs();
+        
+        console.log(`\n📊 Summary for ${city}:`);
+        console.log(`   - Total chefs: ${result.total}`);
+        console.log(`   - Messages sent: ${result.success}`);
+        console.log(`   - Skipped: ${result.skipped}`);
         
         // Longer delay between cities
         if (city !== config.usCities[config.usCities.length - 1]) {
-          console.log(`⏳ Waiting before next city...`);
+          console.log(`\n⏳ Waiting before next city...`);
           await this.randomDelay(5000, 7000);
         }
       }
