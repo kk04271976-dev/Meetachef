@@ -46,6 +46,26 @@ Or use:
 npx playwright install chromium
 ```
 
+## 🌿 Git Workflow
+
+This project uses a professional Git workflow with automated scripts. See [GIT_WORKFLOW.md](GIT_WORKFLOW.md) for detailed information.
+
+### Quick Commands:
+```bash
+# Create feature branch
+npm run git:feature my-feature
+
+# Commit changes
+npm run git:commit feat scope "your message"
+
+# Push changes
+npm run git:push
+
+# Create issues
+npm run issue:bug "Bug title" "Description"
+npm run issue:feature "Feature title" "Description"
+```
+
 ## ⚙️ Configuration
 
 Edit `config.js` to customize:
