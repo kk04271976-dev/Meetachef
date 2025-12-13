@@ -40,7 +40,7 @@ export const config = {
 
   // Rate limiting settings (important for policy compliance)
   delayBetweenActions: 3000, // Minimum delay between actions in milliseconds (3 seconds)
-  maxChefsPerSession: 10, // Maximum number of chefs to contact per session
+  // Note: maxChefsPerSession is no longer used - all chefs in each city are processed
 
   // Timeout settings
   pageTimeout: 30000, // 30 seconds
