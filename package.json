@@ -6,7 +6,16 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "install-browsers": "npx playwright install chromium"
+    "install-browsers": "npx playwright install chromium",
+    "git:feature": "node scripts/git-helpers.js feature",
+    "git:bugfix": "node scripts/git-helpers.js bugfix",
+    "git:hotfix": "node scripts/git-helpers.js hotfix",
+    "git:commit": "node scripts/git-helpers.js commit",
+    "git:push": "node scripts/git-helpers.js push",
+    "git:merge-dev": "node scripts/git-helpers.js merge-develop",
+    "git:merge-main": "node scripts/git-helpers.js merge-main",
+    "issue:bug": "node scripts/create-issue.js bug",
+    "issue:feature": "node scripts/create-issue.js feature"
   },
   "keywords": [
     "automation",
