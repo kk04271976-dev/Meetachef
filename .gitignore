@@ -31,3 +31,6 @@ Thumbs.db
 *.swp
 *.swo
 
+# Automation state
+.current-page.txt
+

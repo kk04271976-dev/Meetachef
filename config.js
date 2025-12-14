@@ -38,6 +38,10 @@ export const config = {
   // Default message to send to chefs
   defaultMessage: `Hello! I'm interested in collaborating with you. I'd love to learn more about your culinary expertise and explore potential opportunities to work together. Looking forward to connecting!`,
 
+  // Automation mode settings
+  runChefsNearPages: true, // Set to true to process chefs/near pages
+  runMatchesByCity: true, // Set to true to process matches by city
+
   // Rate limiting settings (important for policy compliance)
   delayBetweenActions: 3000, // Minimum delay between actions in milliseconds (3 seconds)
   // Note: maxChefsPerSession is no longer used - all chefs in each city are processed
@@ -51,6 +55,11 @@ export const config = {
   credentials: {
     email: 'thomasdpurdy@outlook.com',
     password: 'i7ZrdrhjK9R9Yww',
+  },
+  resume: {
+    enabled: true,
+    progressFile: '.progress.json',
+    startPage: 1,
   },
 };
 

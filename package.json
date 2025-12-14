@@ -6,6 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "chefs-near": "node index.js chefs-near",
     "install-browsers": "npx playwright install chromium",
     "git:feature": "node scripts/git-helpers.js feature",
     "git:bugfix": "node scripts/git-helpers.js bugfix",
